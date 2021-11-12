@@ -3,8 +3,8 @@ from typing import Tuple
 
 from dicewars.client.ai_driver import BattleCommand, EndTurnCommand, TransferCommand
 from dicewars.ai.utils import possible_attacks, probability_of_successful_attack, save_state
-from dicewars.server.board import Board
-from dicewars.server.area import Area
+from dicewars.client.game.board import Board
+from dicewars.client.game.area import Area
 
 class MaxN:
     def __init__(self, player_name, board: Board, players_order, heuristic):

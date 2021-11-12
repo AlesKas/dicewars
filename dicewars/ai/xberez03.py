@@ -1,7 +1,7 @@
 import logging
 
 from dicewars.client.ai_driver import BattleCommand, EndTurnCommand, TransferCommand
-from dicewars.server.board import Board
+from dicewars.client.game.board import Board
 from dicewars.ai.maxn import MaxN
 
 class AI:
