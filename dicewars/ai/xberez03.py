@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import List, Tuple
 
 from dicewars.client.ai_driver import BattleCommand, EndTurnCommand, TransferCommand
 from dicewars.ai.utils import probability_of_successful_attack
@@ -24,8 +24,6 @@ class AI:
         else:
             command = self.search.command(board)
         return command
-    
-    
 
 
 
@@ -33,9 +31,10 @@ def leaf_heuristic(board: Board, player_name: Name) -> int:
     return board.get_player_dice(player_name)
 
 def attack_heuristic(board: Board, player_name: Name,  attack: Tuple[Area, Area]) -> bool:
-        from_area: Area = attack[0]
-        to_area: Area = attack[1]   
-        is_probable: bool = probability_of_successful_attack(board, from_area.get_name(), to_area.get_name()) > 0.5 or from_area.get_dice() >= 8
-        is_relevant: bool = from_area.get_owner_name() == player_name or from_area.get_owner_name() == player_name
-        return is_probable and is_relevant
+    from_area: Area = attack[0]
+    to_area: Area = attack[1]   
+    #is_probable: bool = probability_of_successful_attack(board, from_area.get_name(), to_area.get_name()) > 0.5 or from_area.get_dice() >= 8
+    is_probable: bool = from_area.get_dice() > to_area.get_dice() or (from_area.get_dice() == to_area.get_dice() and from_area.get_dice() >= 4)
+    is_relevant: bool = from_area.get_owner_name() == player_name or from_area.get_owner_name() == player_name
+    return is_probable and is_relevant
         

@@ -7,6 +7,7 @@ from dicewars.client.game.board import Board
 from dicewars.client.game.area import Area
 from dicewars.ai.aliases import Name, Command
 from dicewars.ai.move import Move
+from dicewars.ai.simulator import Simulator
 
 
 class MaxN:
@@ -16,10 +17,12 @@ class MaxN:
         self.leaf_heuristic = leaf_heuristic
         self.attack_heuristic = attack_heuristic
         self.moves_root: Optional[Move] = None
+        self.simulator = Simulator(player_name, players_order)
 
 
     def simulate(self, board: Board, max_depth) -> Command:
-        self.moves_root = self.maximize(board, self.player_name, max_depth)
+        reserves = [0 for _ in self.players_order]
+        self.moves_root = self.maximize(board, self.player_name, reserves, max_depth)
         return self.moves_root.command
         
     def command(self, board: Board) -> Command:
@@ -30,7 +33,7 @@ class MaxN:
         else:
             return EndTurnCommand()
 
-    def maximize(self, board: Board, current_player: Name, depth) -> Move:
+    def maximize(self, board: Board, current_player: Name, reserves: List[int], depth) -> Move:
         scores = [-1 for _ in self.players_order]
         moves = set()
         
@@ -41,17 +44,13 @@ class MaxN:
         reasonable_attacks = self.get_reasonable_attacks(board, current_player)
         if reasonable_attacks:
             for source, target in reasonable_attacks:
-                success_move, failure_move = self.simulate_attack(board, source, target, current_player, depth)
+                success_move, failure_move = self.simulate_attack(board, source, target, current_player, reserves, depth)
                 
                 save_moves = (current_player == self.player_name)
                 move = Move.attack(source, target, self.order_of_player(current_player), success_move, failure_move, save_moves)
                 moves.add(move)
         else:
-            next_player = self.next_player(current_player)
-            if next_player == self.player_name:
-                 depth -= 1
-            
-            next_move = self.maximize(board, next_player, depth)
+            next_move = self.simulate_end_turn(board, current_player, reserves, depth)
             command = EndTurnCommand()
 
             move = Move.other(command, scores=next_move.scores)
@@ -59,57 +58,41 @@ class MaxN:
 
         return self.get_best_move(moves, current_player)
             
-    
-    def simulate_attack(self, board: Board, source: Area, target: Area, current_player: Name, depth: int) -> Move:
-        source_state = self.save_area_state(source)
-        target_state = self.save_area_state(target)
+    def simulate_attack(self, board: Board, source: Area, target: Area, current_player: Name, reserves: List[int], depth: int) -> Move:
+        state = self.simulator.save_pre_attack_state(source, target)
         
-        self.simulate_successful_attack(source, target, current_player)
-        successful_move = self.maximize(board, current_player, depth)
+        self.simulator.successful_attack(source, target, current_player)
+        successful_move = self.maximize(board, current_player, reserves, depth)
 
-        self.load_area_state(source, source_state)
-        self.load_area_state(target, target_state)
+        self.simulator.restore_pre_attack_state(source, target, state)
 
-        self.simulate_failed_attack(source, target)
-        failed_move = self.maximize(board, current_player, depth)
+        self.simulator.failed_attack(source, target)
+        failed_move = self.maximize(board, current_player, reserves, depth)
 
-        self.load_area_state(source, source_state)
-        self.load_area_state(target, target_state)
+        self.simulator.restore_pre_attack_state(source, target, state)
 
         return (successful_move, failed_move)
-    
 
+    def simulate_end_turn(self, board, current_player, reserves, depth):
+        state = self.simulator.save_player_areas_state(board, current_player)
+        
+        next_player = self.next_player(current_player)
+        if next_player == self.player_name:
+            depth -= 1
+        if current_player == self.player_name:
+            self.simulator.end_turn_pessimistic(board, current_player, reserves)
+        else:
+            self.simulator.end_turn_optimistic(board, current_player, reserves)
+        next_move = self.maximize(board, next_player, reserves, depth) 
+        
+        self.simulator.restore_player_areas_state(board, current_player, state)
+        return next_move
+    
     def get_reasonable_attacks(self, board: Board, current_player: Name) -> List[Tuple[Area, Area]]:
         return [attack for attack in possible_attacks(board, current_player) if self.attack_heuristic(board, self.player_name, attack)]
 
-    
-    def simulate_successful_attack(self, source: Area, target: Area, current_player: Name):
-        source_dice = source.get_dice()
-        source.set_dice(1)
-        target.set_dice(source_dice - 1)
-        target.set_owner(current_player)
-
-    def simulate_failed_attack(self, source: Area, target: Area):
-        source_dice = source.get_dice()
-        source.set_dice(1)
-        if source_dice == 8:
-            dice_loss = 2
-        elif source_dice >= 4:
-            dice_loss = 1
-        else:
-            dice_loss = 0
-        target.set_dice(max(target.get_dice() - dice_loss, 1))
-
-    def save_area_state(self, area: Area) -> Tuple[Name, int]:
-        return (area.get_owner_name(), area.get_dice())
-
-    def load_area_state(self, area: Area, state: Tuple[Name, int]):
-        area.set_owner(state[0])
-        area.set_dice(state[1])
-
     def get_best_move(self, moves: set[Move], current_player) -> Move:
         return max(moves, key=lambda move: move.scores[self.order_of_player(current_player)])
-        
 
     def next_player(self, current_player: Name) -> Name:
         current_order = self.order_of_player(current_player)
@@ -119,4 +102,4 @@ class MaxN:
         return values[self.order_of_player(player)]
 
     def order_of_player(self, player: Name) -> int:
-        return self.players_order.index(player)    
+        return self.players_order.index(player)
