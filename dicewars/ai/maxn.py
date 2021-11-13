@@ -5,7 +5,7 @@ from dicewars.client.ai_driver import BattleCommand, EndTurnCommand, TransferCom
 from dicewars.ai.utils import possible_attacks, probability_of_successful_attack, save_state
 from dicewars.client.game.board import Board
 from dicewars.client.game.area import Area
-from dicewars.ai.name import Name
+from dicewars.ai.aliases import Name, Command
 
 class MaxN:
     def __init__(self, player_name: Name, players_order: List[Name], heuristic):
@@ -14,11 +14,11 @@ class MaxN:
         self.heuristic = heuristic
 
 
-    def simulate(self, board: Board, max_depth: int):
+    def simulate(self, board: Board, max_depth: int) -> Command:
         _, command = self.maximize(board, self.player_name, max_depth)
         return command
 
-    def maximize(self, board: Board, current_player: Name, max_depth: int, current_depth=0):
+    def maximize(self, board: Board, current_player: Name, max_depth: int, current_depth=0) -> Tuple[List[int], Command]:
         values = [-1 for _ in self.players_order]
         command = EndTurnCommand()
         
@@ -57,7 +57,7 @@ class MaxN:
         return values
     
 
-    def get_reasonable_attacks(self, board: Board, current_player: Name):
+    def get_reasonable_attacks(self, board: Board, current_player: Name) -> List[Tuple[Area, Area]]:
         return [attack for attack in possible_attacks(board, current_player) if self.is_attack_reasonable(board, attack)]
     
     def is_attack_reasonable(self, board: Board, attack: Tuple[Area, Area]) -> bool:
