@@ -13,10 +13,14 @@ class AI:
 
 
     def ai_turn(self, board: Board, nb_moves_this_turn, nb_transfers_this_turn, nb_turns_this_game, time_left):
-        return self.search.simulate(board, 4)
+        logging.info(f"Move: {nb_moves_this_turn}")
+        if nb_moves_this_turn == 0:
+            self.search.simulate(board, 2)
+
+        return self.search.command()
 
 
 def leaf_heuristic(board: Board, player_name):
-    return sum(area.get_dice() for area in board.get_player_areas(player_name))
+    return board.get_player_dice(player_name)
 
         
