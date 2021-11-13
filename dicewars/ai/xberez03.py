@@ -9,7 +9,7 @@ class AI:
         self.player_name = player_name
         self.logger = logging.getLogger('AI')
 
-        self.search = MaxN(player_name, board, players_order, leaf_heuristic)
+        self.search = MaxN(player_name, players_order, leaf_heuristic)
 
 
     def ai_turn(self, board: Board, nb_moves_this_turn, nb_transfers_this_turn, nb_turns_this_game, time_left):
