@@ -29,6 +29,13 @@ class Simulator:
             dice_loss = 0
         target.set_dice(max(target.get_dice() - dice_loss, 1))
 
+    def transfer(self, source: Area, target: Area):
+        source_dice = source.get_dice()
+        target_dice = target.get_dice()
+        magnitude = min(8 - target_dice, source_dice - 1)
+        source.set_dice(source_dice - magnitude)
+        target.set_dice(target_dice + magnitude)
+
     def end_turn_optimistic(self, board: Board, player: Name, reserves: List[int]):
         gain = self.calculate_end_turn_gain(board, player, reserves)
         borders = board.get_player_border(player)
@@ -57,10 +64,10 @@ class Simulator:
         for area, dice in zip(areas, state):
             area.set_dice(dice)
 
-    def save_pre_attack_state(self, source: Area, target: Area) -> Tuple[Tuple[Name, int], Tuple[Name, int]]:
+    def save_pre_move_state(self, source: Area, target: Area) -> Tuple[Tuple[Name, int], Tuple[Name, int]]:
         return (self.save_area_state(source), self.save_area_state(target))
 
-    def restore_pre_attack_state(self, source: Area, target: Area, state: Tuple[Tuple[Name, int], Tuple[Name, int]]):
+    def restore_pre_move_state(self, source: Area, target: Area, state: Tuple[Tuple[Name, int], Tuple[Name, int]]):
         self.restore_area_state(source, state[0])
         self.restore_area_state(target, state[1])
 
