@@ -120,7 +120,7 @@ class MaxN:
                 transfers.extend(area_transfers)
         return [transfer for transfer in transfers if self.transfer_heuristic(board, transfer, transfers_done)]
 
-    def get_best_move(self, moves: set[Move], current_player) -> Move:
+    def get_best_move(self, moves: List[Move], current_player) -> Move:
         return max(moves, key=lambda move: move.scores[self.order_of_player(current_player)])
 
     def next_player(self, current_player: Name) -> Name:
