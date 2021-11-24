@@ -1,4 +1,5 @@
 import logging
+from pickle import NONE
 from typing import List, Tuple, Set
 from dicewars.ai.utils import probability_of_holding_area, probability_of_successful_attack, save_state
 import json
@@ -24,10 +25,9 @@ class AI:
             }
         }
         self._construct_areas(board)
-        self._best_move = transfer_heuristic2(self.areas)
-        self._move_path = self._generate_path(board, self._best_move[0], self._best_move[1])
-        logging.info(self._best_move)
-        logging.info(self._move_path)
+        self._best_move = self.transfer_heuristic2(self.areas)
+        if self._best_move is not None:
+            self._move_path = self._generate_path(board, self._best_move[0], self._best_move[1])
 
         self.search = MaxN(player_name, players_order, 1, leaf_heuristic, transfer_heuristic, attack_heuristic)
         with open('debug.save', 'wb') as f:
@@ -55,25 +55,66 @@ class AI:
     def _generate_path(self, board: Board, from_name: int, to_name: int) -> list:
         from_area : Area = board.get_area(from_name)
         to_area : Area = board.get_area(to_name)
-        logging.info(f"{from_area} {to_area}")
+        logging.info(f"{from_area.get_name()} {to_area.get_name()}")
         for depth in range(0, MAX_DEPTH):
-            logging.info(depth)
+            path = [from_area.get_name()]
             try:
-                end = self._iterate(from_area, to_area, depth)
+                found = self._iterate(board, from_area.get_name(), to_area.get_name(), depth, path)
             except Exception:
+                logging.info("found with excpetion " + str(depth))
                 break
+        logging.info(path)
+        path = self._optimalize_path(board, path)
+        logging.info(path)
 
-    # Iterative DFS. not working so far
-    def _iterate(self, start: Area, destination: int, depth: int) -> bool:
+    # Some random shit I inveted, hope it works, it does not return optimal path
+    # Sometime it works, sometime it doesnt
+    def _iterate(self,board: Board, start: int, destination: int, depth: int, visited: list) -> bool:
         if depth == 0:
-            return destination in start.get_adjacent_areas_names()
-        for area in start.get_adjacent_areas_names():
-            if self._iterate(self.board.get_area(area), destination, depth-1):
+            logging.info(f"{visited}")
+            return destination in board.get_area(start).get_adjacent_areas_names()
+        for area in board.get_area(start).get_adjacent_areas_names():
+            if self._iterate(board, area, destination, depth-1, visited.append(area)):
+                visited.append(destination)
+                logging.info(visited)
                 raise Exception
+        
+    def _optimalize_path(self, board: Board, path: list) -> list:
+        newPath = [path[0]]
+        for index in range(len(path) - 2):
+            if not path[index+2] in board.get_area(path[index]).get_adjacent_areas_names():
+                newPath.append(path[index+1])
+        return path
 
 
-    def move_dices_to_leafs(self, board: Board):
-        pass
+    # Compute outer area with lowest probability of hold, and
+    # inner area with highest count of dices, so inner area can provide dices to outer area
+    # Can be improved by taking into account distance between two areas
+    def transfer_heuristic2(self, playerAreas : dict, declinedPaths = []) -> Tuple[int, int]:
+        outerAreas : dict = playerAreas["outer"]
+        innerAreas : dict = playerAreas["inner"]
+        probability_of_hold = 1
+        num_of_dices = 0
+        lowest_outer_area = None
+        highest_inner_area = None
+        for areaName, value in outerAreas.items():
+            if value["probabilityOfHold"] <= probability_of_hold:
+                probability_of_hold = value["probabilityOfHold"]
+                lowest_outer_area = areaName
+        
+        for areaName, value in innerAreas.items():
+            if value["dices"] > num_of_dices:
+                num_of_dices = value["dices"]
+                highest_inner_area = areaName
+
+        if num_of_dices == 1:
+            logging.info("I only have inner areas with 1 dices, cannot move.")
+            return None
+        if highest_inner_area is None:
+            logging.info("I have no inner area, cannot move dies.")
+            return None
+
+        return (highest_inner_area, lowest_outer_area)
 
     def ai_turn(self, board: Board, nb_moves_this_turn, nb_transfers_this_turn, nb_turns_this_game, time_left):
         logging.info(f"Move: {nb_moves_this_turn + nb_transfers_this_turn}")
@@ -126,29 +167,6 @@ def transfer_heuristic(board: Board, transfer: Tuple[Area, Area], transfers_done
     else:
         return True
 
-# Compute outer area with lowest probability of hold, and
-# inner area with highest count of dices, so inner area can provide dices to outer area
-# Can be improved by taking into account distance between two areas
-def transfer_heuristic2(playerAreas : dict) -> Tuple[int, int]:
-    outerAreas : dict = playerAreas["outer"]
-    innerAreas : dict = playerAreas["inner"]
-    probability_of_hold = 1
-    num_of_dices = 0
-    lowest_outer_area = None
-    highest_inner_area = None
-    for areaName, value in outerAreas.items():
-        if value["probabilityOfHold"] <= probability_of_hold:
-            probability_of_hold = value["probabilityOfHold"]
-            lowest_outer_area = areaName
-    
-    for areaName, value in innerAreas.items():
-        if value["dices"] > num_of_dices:
-            num_of_dices = value["dices"]
-            highest_inner_area = areaName
-
-    return (highest_inner_area, lowest_outer_area)
-
-
 def attack_heuristic(board: Board, player_name: Name,  attack: Tuple[Area, Area]) -> bool:
     from_area: Area = attack[0]
     to_area: Area = attack[1]
@@ -160,4 +178,3 @@ def attack_heuristic(board: Board, player_name: Name,  attack: Tuple[Area, Area]
     #is_probable: bool = from_area.get_dice() > to_area.get_dice() or (from_area.get_dice() == to_area.get_dice() and from_area.get_dice() >= 4)
     is_relevant: bool = from_area.get_owner_name() == player_name or to_area.get_owner_name() == player_name
     return is_probable and is_relevant
-        
