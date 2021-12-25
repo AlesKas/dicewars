@@ -2,6 +2,7 @@ import json
 from json.decoder import JSONDecodeError
 import logging
 import random
+from typing import List
 import numpy as np
 import socket
 import sys
@@ -81,6 +82,9 @@ class Game:
     def run(self):
         """Main loop of the game
         """
+        from NN_scripts.game import game_configuration, save_game_configurations
+        configurations = list()
+
         try:
             for i in range(1, self.number_of_players + 1):
                 player = self.players[i]
@@ -90,7 +94,20 @@ class Game:
                 self.handle_player_turn()
                 if self.check_win_condition():
                     sys.stdout.write(str(self.summary))
+                    for i, p in self.players.items():
+                        if p.get_number_of_areas() == self.board.get_number_of_areas():
+                            save_game_configurations(
+                                winner_index=i,
+                                configurations=configurations,
+                            )
+                            break
                     break
+
+                serialised_game = game_configuration(
+                    board=self.board,
+                    players=self.players,
+                )
+                configurations.append(serialised_game)
 
         except KeyboardInterrupt:
             self.logger.info("Game interrupted.")
