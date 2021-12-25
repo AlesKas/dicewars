@@ -46,8 +46,10 @@ NB_BOARDS = 50
 
 def playing_4_ais():
     PLAYING_AIs = []
-    for i in range(0, 4):
-        PLAYING_AIs.append(SITING_AIs[random.randint(0, 15)])
+    while len(PLAYING_AIs) != 4:
+        ai = SITING_AIs[random.randint(0, 15)]
+        if ai not in PLAYING_AIs:
+            PLAYING_AIs.append(ai)
     return PLAYING_AIs
 
 

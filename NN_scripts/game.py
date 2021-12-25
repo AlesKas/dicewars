@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import sys
 from os import makedirs
 from typing import Dict, Tuple, Iterable, Optional
 
@@ -26,7 +27,7 @@ def game_configuration(
     players = players or dict()
 
     data = np.empty((MAX_AREA_COUNT, MAX_AREA_COUNT + 1), dtype=int)
-    board_state = []
+
     # generates triangle matrix of neighbor areas
     for column_area_id in range(MAX_AREA_COUNT):
         column_area = areas.get(column_area_id)
@@ -42,7 +43,7 @@ def game_configuration(
         for col_id in range(2, MAX_AREA_COUNT + 1):
             data[column_area_id][col_id] = int((col_id + 1) in neighbors)
 
-    return  data
+    return data
 
 
 def save_game_configurations(winner_index, configurations):
