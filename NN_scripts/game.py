@@ -47,10 +47,10 @@ def game_configuration(
 
 
 def save_game_configurations(winner_index, configurations):
+    
     winner_dir = os.path.join(LOG_DIR, f'{winner_index}')
     makedirs(winner_dir, exist_ok=True)
-
-    data = np.array(configurations)
+    data = np.asarray(configurations)
     conf_hash = str(hash(data.tostring()))
     conf_file = os.path.join(winner_dir, conf_hash)
     np.save(f"{conf_file}.npy", data)
