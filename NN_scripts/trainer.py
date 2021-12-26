@@ -12,6 +12,7 @@ class DCNNTrainer:
                 model_name, load=False, learning_rate=0.01,
                 start_epoch=0, end_epoch=1000):
         
+        self.name = model_name
         self.device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = DCNN(in_channels, out_classes)
         self.optimizer = torch.optim.Adam(self.model.parameters(), learning_rate)

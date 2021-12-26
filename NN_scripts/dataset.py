@@ -12,7 +12,7 @@ class Games(Dataset):
     def __init__(self, data_list):
         super().__init__()
         self.data, self.labels = self.__load(data_list)
-        self.data = torch.unsqueeze(self.data, dim=1)
+        #self.data = torch.unsqueeze(self.data, dim=1)
 
     def __load(self, data_list):
         
@@ -20,7 +20,7 @@ class Games(Dataset):
         labels = []
 
         for key, item in data_list.items():
-            game = torch.from_numpy(np.load(key)).permute((0,2,1))
+            game = torch.from_numpy(np.load(key))
             label = torch.zeros((game.size()[0],4))
             label[:, item-1] = 1
             labels.append(label)
@@ -30,8 +30,8 @@ class Games(Dataset):
 
     def __getitem__(self, index):
 
-        data = copy.deepcopy(self.data[index])
-        label = copy.deepcopy(self.labels[index])
+        data = self.data[index]
+        label = self.labels[index]
 
         return {'x': data.float(),
                 'y': label.float()}
