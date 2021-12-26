@@ -1,8 +1,5 @@
-import os
 import numpy as np
-import sys
-from os import makedirs
-from typing import Dict, Tuple, Iterable, Optional
+from typing import Dict, Optional
 
 from dicewars.server.area import Area
 from dicewars.server.board import Board

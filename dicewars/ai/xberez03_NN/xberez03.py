@@ -8,11 +8,13 @@ from dicewars.client.game.board import Board
 from dicewars.client.game.area import Area
 from dicewars.ai.maxn import MaxN
 from dicewars.ai.aliases import Name
+"""
 from NN_scripts.model import DCNN
 import torch
 import torch.nn.functional as F
 import os
 import sys
+"""
 MAX_DEPTH = 6
 
 class AI:
@@ -138,11 +140,13 @@ class AI:
 
 
 def leaf_heuristic(board: Board, player_name: Name, end_turn_gain: int) -> float:
+    """
     from dicewars.ai.xberez03_NN.utils import game_configuration
     game = game_configuration(board)
     model = load_model()
     prediction = valid(model, game)
     print(f'prediction: {prediction}.', file=sys.stderr)
+    """
     return board.get_player_dice(player_name)
 
     
@@ -187,7 +191,7 @@ def attack_heuristic(board: Board, player_name: Name,  attack: Tuple[Area, Area]
     is_relevant: bool = from_area.get_owner_name() == player_name or to_area.get_owner_name() == player_name
     return is_probable and is_relevant
 
-
+"""
 def valid(model, data):
     data = torch.unsqueeze(torch.from_numpy(data), 0).permute((0,2,1)) 
     data = torch.unsqueeze(data, 0).float()
@@ -206,3 +210,4 @@ def load_model():
             unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
         model.load_state_dict(unParalled_state_dict)
         return model
+"""
