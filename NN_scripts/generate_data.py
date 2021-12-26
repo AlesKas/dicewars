@@ -38,7 +38,8 @@ SITING_AIs = [
     'kb.stei_dt',
     'kb.xlogin42',
     'kb.xlogin00',
-    'xberez03',
+    'xberez03_old',
+    'xberez03_NN',
 ]
 
 UNIVERSAL_SEED = random.randint(1, 10 ** 10)
