@@ -8,7 +8,11 @@ from dicewars.client.game.board import Board
 from dicewars.client.game.area import Area
 from dicewars.ai.maxn import MaxN
 from dicewars.ai.aliases import Name
-
+from NN_scripts.model import DCNN
+import torch
+import torch.nn.functional as F
+import os
+import sys
 MAX_DEPTH = 6
 
 class AI:
@@ -134,6 +138,11 @@ class AI:
 
 
 def leaf_heuristic(board: Board, player_name: Name, end_turn_gain: int) -> float:
+    from dicewars.ai.xberez03_NN.utils import game_configuration
+    game = game_configuration(board)
+    model = load_model()
+    prediction = valid(model, game)
+    print(f'prediction: {prediction}.', file=sys.stderr)
     return board.get_player_dice(player_name)
 
     
@@ -153,7 +162,6 @@ def calculate_ring_value(board: Board, player_name, ring: List[Area], already_co
         ring_sum += area.get_dice() * (1.0 + (hold_probability if hold_probability >= 1.0 else 0))
 
     return ring_sum*multiplier + calculate_ring_value(board, player_name, new_ring, already_counted, multiplier*inland_devaluation_constant) 
-
 
 
 def transfer_heuristic(board: Board, transfer: Tuple[Area, Area], transfers_done: List[Tuple[Area, Area]]) -> bool:
@@ -178,3 +186,23 @@ def attack_heuristic(board: Board, player_name: Name,  attack: Tuple[Area, Area]
     #is_probable: bool = from_area.get_dice() > to_area.get_dice() or (from_area.get_dice() == to_area.get_dice() and from_area.get_dice() >= 4)
     is_relevant: bool = from_area.get_owner_name() == player_name or to_area.get_owner_name() == player_name
     return is_probable and is_relevant
+
+
+def valid(model, data):
+    data = torch.unsqueeze(torch.from_numpy(data), 0).permute((0,2,1)) 
+    data = torch.unsqueeze(data, 0).float()
+    with torch.no_grad():
+        model.eval()
+        pred = model(data)
+        vector = F.softmax(pred, dim=0)
+    return vector
+
+def load_model():
+        model = DCNN(1, 4)
+        checkpoint = torch.load(os.path.join(os.path.dirname(__file__), 'model.pt'))
+        state_dict = checkpoint['state_dict']
+        unParalled_state_dict = {}
+        for key in state_dict.keys():
+            unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
+        model.load_state_dict(unParalled_state_dict)
+        return model
