@@ -11,7 +11,15 @@ from dicewars.ai.aliases import Name
 __all__ = ['AI']
 
 def leaf_heuristic(board: Board, player_name: Name, end_turn_gain: int) -> float:
-    return board.get_player_dice(player_name)
+    dice = board.get_player_dice(player_name)
+    regions = board.get_players_regions(player_name)
+    regions_sizes = []
+    for region in regions:
+        region_size = len(region)
+        dice += region_size
+        regions_sizes.append(region_size)
+    dice += max(regions_sizes)
+    return dice
 
     
 def calculate_ring_value(board: Board, player_name, ring: List[Area], already_counted: Set[int]=set(), multiplier: float=1.0) -> float:
