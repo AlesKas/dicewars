@@ -38,7 +38,7 @@ class Games(Dataset):
 
 
     def __len__(self):
-        return self.data.shape[0]
+        return self.data.size()[0]
 
 
 def get_datasets(dirname, training_split=0.75):
