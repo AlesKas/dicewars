@@ -27,7 +27,7 @@ def game_configuration(
     players = players or dict()
 
     board_state = []
-    data = np.empty(((MAX_AREA_COUNT * MAX_AREA_COUNT)/2) + MAX_AREA_COUNT + MAX_AREA_COUNT + MAX_PLAYER_COUNT, dtype=int)
+    data = np.empty(((MAX_AREA_COUNT * MAX_AREA_COUNT)//2) + MAX_AREA_COUNT + MAX_AREA_COUNT + MAX_PLAYER_COUNT, dtype=int)
 
     for column_area_id in range(1, MAX_AREA_COUNT):
         column_area = areas.get(column_area_id)
