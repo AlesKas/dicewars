@@ -8,14 +8,14 @@ from dicewars.client.game.board import Board
 from dicewars.client.game.area import Area
 from dicewars.ai.maxn import MaxN
 from dicewars.ai.aliases import Name
-"""
+
 from NN_scripts.model import DCNN
 import torch
 import torch.nn.functional as F
 import os
 import sys
-"""
-MAX_DEPTH = 6
+
+MAX_DEPTH = 3
 
 class AI:
     def __init__(self, player_name, board, players_order, max_transfers):
@@ -35,7 +35,7 @@ class AI:
         if self._best_move is not None:
             self._move_path = self._generate_path(board, self._best_move[0], self._best_move[1])
 
-        self.search = MaxN(player_name, players_order, 1, leaf_heuristic, transfer_heuristic, attack_heuristic)
+        self.search = MaxN(player_name, players_order, 1, self.leaf_heuristic, self.transfer_heuristic, self.attack_heuristic)
         with open('debug.save', 'wb') as f:
                 save_state(f, board, self.player_name, self.search.players_order)
 
@@ -122,6 +122,7 @@ class AI:
 
         return (highest_inner_area, lowest_outer_area)
 
+
     def ai_turn(self, board: Board, nb_moves_this_turn, nb_transfers_this_turn, nb_turns_this_game, time_left):
         logging.info(f"Move: {nb_moves_this_turn + nb_transfers_this_turn}")
         self._construct_areas(board)
@@ -139,75 +140,90 @@ class AI:
 
 
 
-def leaf_heuristic(board: Board, player_name: Name, end_turn_gain: int) -> float:
-    """
-    from dicewars.ai.xberez03_NN.utils import game_configuration
-    game = game_configuration(board)
-    model = load_model()
-    prediction = valid(model, game)
-    print(f'prediction: {prediction}.', file=sys.stderr)
-    """
-    return board.get_player_dice(player_name)
+    def leaf_heuristic(self, board: Board, players_order: List[Name], end_turn_gain: int):
+        from dicewars.ai.xberez03_NN.utils import game_configuration
+        prediction = [-1 for _ in players_order]
+        game = game_configuration(
+            board=board,
+            biggest_regions={
+                i: len(
+                    self.largest_region(
+                        player_name=i,
+                        board=board
+                    )
+                ) for i in players_order
+            }
+        )
+        
+        model = self.load_model()
+        prediction = self.valid(model, game)
+        
+        return prediction.tolist()
 
-    
-def calculate_ring_value(board: Board, player_name, ring: List[Area], already_counted: Set[int]=set(), multiplier: float=1.0) -> float:
-    inland_devaluation_constant = 0.8
-    if not ring:
-        return 0.0
+        
+    def calculate_ring_value(self, board: Board, player_name, ring: List[Area], already_counted: Set[int]=set(), multiplier: float=1.0) -> float:
+        inland_devaluation_constant = 0.8
+        if not ring:
+            return 0.0
 
-    already_counted.update({area.get_name() for area in ring})
-    new_ring = set()
-    ring_sum = 0
-    for area in ring:
-        adjacents = {board.get_area(adjacent) for adjacent in area.get_adjacent_areas_names() if adjacent not in already_counted}
-        owned_adjacents = {area for area in adjacents if area.get_owner_name() == player_name}
-        new_ring.update(owned_adjacents)
-        hold_probability = probability_of_holding_area(board, area.get_name(), area.get_dice(), area.get_owner_name())
-        ring_sum += area.get_dice() * (1.0 + (hold_probability if hold_probability >= 1.0 else 0))
+        already_counted.update({area.get_name() for area in ring})
+        new_ring = set()
+        ring_sum = 0
+        for area in ring:
+            adjacents = {board.get_area(adjacent) for adjacent in area.get_adjacent_areas_names() if adjacent not in already_counted}
+            owned_adjacents = {area for area in adjacents if area.get_owner_name() == player_name}
+            new_ring.update(owned_adjacents)
+            hold_probability = probability_of_holding_area(board, area.get_name(), area.get_dice(), area.get_owner_name())
+            ring_sum += area.get_dice() * (1.0 + (hold_probability if hold_probability >= 1.0 else 0))
 
-    return ring_sum*multiplier + calculate_ring_value(board, player_name, new_ring, already_counted, multiplier*inland_devaluation_constant) 
+        return ring_sum*multiplier + self.calculate_ring_value(board, player_name, new_ring, already_counted, multiplier*inland_devaluation_constant) 
 
 
-def transfer_heuristic(board: Board, transfer: Tuple[Area, Area], transfers_done: List[Tuple[Area, Area]]) -> bool:
-    #return True
-    back_transfer = (transfer[1], transfer[0])
-    if transfers_done:
-        out =  back_transfer not in transfers_done and transfer != transfers_done[-1]
-        if not out:
-            pass#logging.debug(f"{back_transfer} not in {transfers_done} and {transfer} != {transfers_done[-1]}")
-        return out
-    else:
-        return True
+    def transfer_heuristic(self, board: Board, transfer: Tuple[Area, Area], transfers_done: List[Tuple[Area, Area]]) -> bool:
+        #return True
+        back_transfer = (transfer[1], transfer[0])
+        if transfers_done:
+            out =  back_transfer not in transfers_done and transfer != transfers_done[-1]
+            if not out:
+                pass#logging.debug(f"{back_transfer} not in {transfers_done} and {transfer} != {transfers_done[-1]}")
+            return out
+        else:
+            return True
 
-def attack_heuristic(board: Board, player_name: Name,  attack: Tuple[Area, Area]) -> bool:
-    from_area: Area = attack[0]
-    to_area: Area = attack[1]
-    if from_area.get_dice() == 8 and to_area.get_dice() == 8:
-        is_probable = True
-    else:
-        is_probable = probability_of_successful_attack(board, from_area.get_name(), to_area.get_name()) > 0.6
-    #is_probable: bool = probability_of_successful_attack(board, from_area.get_name(), to_area.get_name()) > 0.5 or from_area.get_dice() >= 8
-    #is_probable: bool = from_area.get_dice() > to_area.get_dice() or (from_area.get_dice() == to_area.get_dice() and from_area.get_dice() >= 4)
-    is_relevant: bool = from_area.get_owner_name() == player_name or to_area.get_owner_name() == player_name
-    return is_probable and is_relevant
+    def attack_heuristic(self, board: Board, player_name: Name,  attack: Tuple[Area, Area]) -> bool:
+        from_area: Area = attack[0]
+        to_area: Area = attack[1]
+        if from_area.get_dice() == 8 and to_area.get_dice() == 8:
+            is_probable = True
+        else:
+            is_probable = probability_of_successful_attack(board, from_area.get_name(), to_area.get_name()) > 0.6
+        #is_probable: bool = probability_of_successful_attack(board, from_area.get_name(), to_area.get_name()) > 0.5 or from_area.get_dice() >= 8
+        #is_probable: bool = from_area.get_dice() > to_area.get_dice() or (from_area.get_dice() == to_area.get_dice() and from_area.get_dice() >= 4)
+        is_relevant: bool = from_area.get_owner_name() == player_name or to_area.get_owner_name() == player_name
+        return is_probable and is_relevant
 
-"""
-def valid(model, data):
-    data = torch.unsqueeze(torch.from_numpy(data), 0).permute((0,2,1)) 
-    data = torch.unsqueeze(data, 0).float()
-    with torch.no_grad():
-        model.eval()
-        pred = model(data)
-        vector = F.softmax(pred, dim=0)
-    return vector
 
-def load_model():
-        model = DCNN(1, 4)
-        checkpoint = torch.load(os.path.join(os.path.dirname(__file__), 'model.pt'))
-        state_dict = checkpoint['state_dict']
-        unParalled_state_dict = {}
-        for key in state_dict.keys():
-            unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
-        model.load_state_dict(unParalled_state_dict)
-        return model
-"""
+    def largest_region(self, player_name: int, board: Board) -> List[int]:
+        players_regions = board.get_players_regions(player_name)
+        max_region_size = max(len(r) for r in players_regions)
+
+        return [r for r in players_regions if len(r) == max_region_size][0]
+
+    def valid(self, model, data):
+        data = torch.unsqueeze(torch.from_numpy(data), 0)
+        data = torch.unsqueeze(data, 0).float()
+        with torch.no_grad():
+            model.eval()
+            pred = model(data)
+            vector = F.softmax(pred, dim=2)
+        return torch.squeeze(torch.squeeze(vector, 0), 0)
+
+    def load_model(self):
+            model = DCNN(633, 4)
+            checkpoint = torch.load(os.path.join(os.path.dirname(__file__), 'model.pt'))
+            state_dict = checkpoint['state_dict']
+            unParalled_state_dict = {}
+            for key in state_dict.keys():
+                unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
+            model.load_state_dict(unParalled_state_dict)
+            return model
