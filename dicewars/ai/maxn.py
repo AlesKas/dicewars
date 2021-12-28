@@ -39,7 +39,7 @@ class MaxN:
         scores = [-1 for _ in self.players_order]
         moves = set()
         if depth <= 0:
-            scores = self.leaf_heuristic(board, self.players_order, self.simulator.calculate_end_turn_gain(board, current_player, reserves))
+            scores = self.leaf_heuristic(board, current_player, self.players_order, self.simulator.calculate_end_turn_gain(board, current_player, reserves))
             return Move.other(EndTurnCommand(), scores=scores)
             
         next_move = self.simulate_end_turn(board, current_player, reserves, trasfers_done, transfers, depth)

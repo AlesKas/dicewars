@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import os
 import sys
 
-MAX_DEPTH = 3
+MAX_DEPTH = 6
 
 class AI:
     def __init__(self, player_name, board, players_order, max_transfers):
@@ -140,7 +140,7 @@ class AI:
 
 
 
-    def leaf_heuristic(self, board: Board, players_order: List[Name], end_turn_gain: int):
+    def leaf_heuristic(self, board: Board, current_player: Name, players_order: List[Name], end_turn_gain: int):
         from dicewars.ai.xberez03_NN.utils import game_configuration
         prediction = [-1 for _ in players_order]
         game = game_configuration(
@@ -157,8 +157,9 @@ class AI:
         
         model = self.load_model()
         prediction = self.valid(model, game)
-        
-        return prediction.tolist()
+        prediction = prediction.tolist()
+
+        return prediction
 
         
     def calculate_ring_value(self, board: Board, player_name, ring: List[Area], already_counted: Set[int]=set(), multiplier: float=1.0) -> float:
