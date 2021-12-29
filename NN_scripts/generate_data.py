@@ -46,7 +46,7 @@ SITING_AIs = [
 ]
 
 UNIVERSAL_SEED = random.randint(1, 10 ** 10)
-NB_BOARDS = 50
+NB_BOARDS = 100
 
 def playing_4_ais():
     PLAYING_AIs = []
