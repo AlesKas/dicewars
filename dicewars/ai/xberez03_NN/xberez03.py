@@ -19,7 +19,6 @@ MAX_DEPTH = 6
 
 class AI:
     def __init__(self, player_name, board, players_order, max_transfers):
-        self.__MAX_TIME = 1 # If there is only 1s left
         self.player_name = player_name
         self.logger = logging.getLogger('AI')
         self.areas = {
@@ -30,11 +29,6 @@ class AI:
 
             }
         }
-        self._construct_areas(board)
-        self._best_move = self.transfer_heuristic2(self.areas)
-        if self._best_move is not None:
-            self._move_path = self._generate_path(board, self._best_move[0], self._best_move[1])
-
         self.search = MaxN(player_name, players_order, 1, self.leaf_heuristic, self.transfer_heuristic, self.attack_heuristic)
         with open('debug.save', 'wb') as f:
                 save_state(f, board, self.player_name, self.search.players_order)
@@ -55,43 +49,41 @@ class AI:
                     "dices" : area.get_dice()
                 }
 
-        logging.info(json.dumps(self.areas, indent=4))
+        #logging.info(json.dumps(self.areas, indent=4))
 
     # Generate path from inner node to outer node
     def _generate_path(self, board: Board, from_name: int, to_name: int) -> list:
         from_area : Area = board.get_area(from_name)
         to_area : Area = board.get_area(to_name)
-        logging.info(f"{from_area.get_name()} {to_area.get_name()}")
+        player_area_names = []
+        for area in board.get_player_areas(self.player_name):
+            player_area_names.append(area.get_name())
+        if from_area.get_name() not in player_area_names or to_area.get_name() not in player_area_names:
+            return None
         for depth in range(0, MAX_DEPTH):
             path = [from_area.get_name()]
-            try:
-                found = self._iterate(board, from_area.get_name(), to_area.get_name(), depth, path)
-            except Exception:
-                logging.info("found with excpetion " + str(depth))
+            if self._iterate(board, from_area.get_name(), to_area.get_name(), depth, path, player_area_names):
+                path.append(to_area.get_name())
                 break
-        logging.info(path)
-        path = self._optimalize_path(board, path)
-        logging.info(path)
-
-    # Some random shit I inveted, hope it works, it does not return optimal path
-    # Sometime it works, sometime it doesnt
-    def _iterate(self,board: Board, start: int, destination: int, depth: int, visited: list) -> bool:
-        if depth == 0:
-            logging.info(f"{visited}")
-            return destination in board.get_area(start).get_adjacent_areas_names()
-        for area in board.get_area(start).get_adjacent_areas_names():
-            if self._iterate(board, area, destination, depth-1, visited.append(area)):
-                visited.append(destination)
-                logging.info(visited)
-                raise Exception
-        
-    def _optimalize_path(self, board: Board, path: list) -> list:
-        newPath = [path[0]]
-        for index in range(len(path) - 2):
-            if not path[index+2] in board.get_area(path[index]).get_adjacent_areas_names():
-                newPath.append(path[index+1])
         return path
 
+    # Some recursive algorthytm I invented, iterative D/B FS, finds optimal path 
+    # from given area to given area, ave maria if this works correctly
+    def _iterate(self,board: Board, start: int, destination: int, depth: int, visited: list, player_areas : list) -> bool:
+        if depth == 0:
+            # Skip returning areas that are in outer areas, so we dont move dices that 
+            # are necessary for defending territory
+            return destination in board.get_area(start).get_adjacent_areas_names()
+        for area in board.get_area(start).get_adjacent_areas_names():
+            if area in player_areas:
+                if area in self.areas["outer"].keys():
+                    visited.append(area)
+                    return True
+                visited.append(area)
+                if self._iterate(board, area, destination, depth-1, visited, player_areas):
+                    return True
+                else:
+                    visited.pop()
 
     # Compute outer area with lowest probability of hold, and
     # inner area with highest count of dices, so inner area can provide dices to outer area
@@ -124,16 +116,21 @@ class AI:
 
 
     def ai_turn(self, board: Board, nb_moves_this_turn, nb_transfers_this_turn, nb_turns_this_game, time_left):
-        logging.info(f"Move: {nb_moves_this_turn + nb_transfers_this_turn}")
+        # If we have just 1s left, we should end turn
         self._construct_areas(board)
-        if time_left >= self.__MAX_TIME:
-            if nb_moves_this_turn + nb_transfers_this_turn == 0:
-                with open('debug.save', 'wb') as f:
-                    save_state(f, board, self.player_name, self.search.players_order)
-                command = self.search.simulate(board, 3)
+        self._best_move = self.transfer_heuristic2(self.areas)
+        if time_left >= 2:
+            with open('debug.save', 'wb') as f:
+                save_state(f, board, self.player_name, self.search.players_order)
+            if nb_transfers_this_turn <= 5:
+                if self._best_move is not None:
+                    move_path = self._generate_path(board, self._best_move[0], self._best_move[1])
+                    if move_path is not None:
+                        return TransferCommand(move_path[0], move_path[1])               
+            if nb_moves_this_turn == 0:
+                command = self.search.simulate(board, 2)
             else:
                 command = self.search.command(board)
-            logging.info(command)
             return command
         else:
             return EndTurnCommand()

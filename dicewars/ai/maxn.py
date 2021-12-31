@@ -42,13 +42,8 @@ class MaxN:
             scores = self.leaf_heuristic(board, current_player, self.players_order, self.simulator.calculate_end_turn_gain(board, current_player, reserves))
             return Move.other(EndTurnCommand(), scores=scores)
             
-        next_move = self.simulate_end_turn(board, current_player, reserves, trasfers_done, transfers, depth)
-        command = EndTurnCommand()
-        move = Move.other(command, scores=next_move.scores)
-        moves.add(move)
         
         reasonable_attacks = self.get_reasonable_attacks(board, current_player)
-        max_probability = 0
         for source, target in reasonable_attacks:
             probability_of_success = probability_of_successful_attack(board, source.get_name(), target.get_name())
             is8v8 = source.get_dice() == 8 and target.get_dice() == 8
@@ -58,13 +53,21 @@ class MaxN:
                 move = Move.attack(source, target, self.order_of_player(current_player), success_move, failure_move, save_moves)
                 moves.add(move)
                 continue
-            if probability_of_success > max_probability:
-                max_probability = probability_of_success
+            if probability_of_success > 0.6:
                 success_move, failure_move = self.simulate_attack(board, source, target, current_player, reserves, trasfers_done, transfers, depth - 1)
                 save_moves = (current_player == self.player_name)
                 move = Move.attack(source, target, self.order_of_player(current_player), success_move, failure_move, save_moves)
                 moves.add(move)
-        logging.info(self.get_best_move(moves, current_player))
+            else:
+                next_move = self.simulate_end_turn(board, current_player, reserves, trasfers_done, transfers, depth)
+                command = EndTurnCommand()
+                move = Move.other(command, scores=next_move.scores)
+                moves.add(move)
+        if len(moves) == 0:
+            next_move = self.simulate_end_turn(board, current_player, reserves, trasfers_done, transfers, depth)
+            command = EndTurnCommand()
+            move = Move.other(command, scores=next_move.scores)
+            moves.add(move)
         return self.get_best_move(moves, current_player)
             
     def simulate_attack(self, board: Board, source: Area, target: Area, current_player: Name, reserves: List[int], trasfers_done: List[Tuple[Area, Area]], transfers: int, depth: int) -> Tuple[Move, Move]:
