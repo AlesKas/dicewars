@@ -125,7 +125,7 @@ class AI:
             if nb_transfers_this_turn <= 5:
                 if self._best_move is not None:
                     move_path = self._generate_path(board, self._best_move[0], self._best_move[1])
-                    if move_path is not None:
+                    if move_path is not None and len(move_path) >= 2:
                         return TransferCommand(move_path[0], move_path[1])               
             if nb_moves_this_turn == 0:
                 command = self.search.simulate(board, 2)
