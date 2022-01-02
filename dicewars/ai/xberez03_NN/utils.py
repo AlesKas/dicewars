@@ -28,21 +28,24 @@ def game_configuration(
         neighbors = column_area.get_adjacent_areas_names() if column_area else {}
 
         for col_id in range(column_area_id, MAX_AREA_COUNT):
-            board_state.extend(neighbors[int(col_id + 1)])
+            if int(col_id + 1) in neighbors:
+                board_state.append(int(1))
+            else:
+                board_state.append(int(0))
 
     for area_id in range(MAX_AREA_COUNT):
         area = areas.get(area_id + 1)
         if area is not None:
-            board_state.extend(area.owner_name)
+            board_state.append(area.owner_name)
         else:
-            board_state.extend(int(0))
+            board_state.append(int(0))
 
     for area_id in range(MAX_AREA_COUNT):
         area = areas.get(area_id + 1)
         if area is not None:
-            board_state.extend(area.dice)
+            board_state.append(area.dice)
         else:
-            board_state.extend(int(0)))
+            board_state.append(int(0))
 
     if biggest_regions:
         board_state.extend([
@@ -53,9 +56,9 @@ def game_configuration(
         for player_id in range(MAX_PLAYER_COUNT):
             p = players.get(player_id + 1)
             if p is not None:
-                board_state.extend(p.get_largest_region(board))
+                board_state.append(p.get_largest_region(board))
             else:
-                board_state.extend(0)
+                board_state.append(0)
 
     data = np.array(board_state)
 
