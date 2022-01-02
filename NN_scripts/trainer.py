@@ -10,7 +10,8 @@ class DCNNTrainer:
 
     def __init__(self, in_channels, out_classes,
                 model_name, load=False, learning_rate=0.01,
-                start_epoch=0, end_epoch=1000):
+                start_epoch=0, end_epoch=1000,
+                batch_size=32, train_size=0):
         
         self.name = model_name
         self.device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -29,13 +30,12 @@ class DCNNTrainer:
             for key in state_dict.keys():
                 unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
             self.model.load_state_dict(unParalled_state_dict, strict=False)
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
         self.model = nn.DataParallel(self.model, 
                                      device_ids = [i for i in range(torch.cuda.device_count())])
         self.model.to(self.device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 
-                                                         step_size=int(1000* 0.8),
+                                                         step_size=int(train_size/batch_size),
                                                          gamma=0.5)
 
 
@@ -61,9 +61,6 @@ class DCNNTrainer:
             losses.append(loss.item())
             loss.backward()
             self.optimizer.step()
-            if (idx + 1) % 5 == 0:
-                print(f"Iteration: {idx}, losses: {np.mean(np.array(losses))}")
-                sys.stdout.flush()
 
         return losses
 
@@ -98,9 +95,13 @@ class DCNNTrainer:
 		                'optimizer_state_dict': self.optimizer.state_dict(),
 		                },os.path.join("pretrained_weights", f"{self.name}.pt"))
             self.best_loss = self.valid_loss
+
         else:
             self.epochs_no_improvement += 1
             text += """\nValidation loss does not decrease from {:.4f} epochs without improvement {}""".format(self.best_loss,
-                                                                                                               self.epochs_no_improvement)
+                                                                                                                     self.epochs_no_improvement)            
         print(text)
         sys.stdout.flush()
+
+        if self.epochs_no_improvement == 10:
+            sys.exit(0)

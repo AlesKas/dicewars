@@ -12,7 +12,6 @@ class Games(Dataset):
     def __init__(self, data_list):
         super().__init__()
         self.data, self.labels = self.__load(data_list)
-        #self.data = torch.unsqueeze(self.data, dim=1)
 
     def __load(self, data_list):
         
@@ -21,8 +20,7 @@ class Games(Dataset):
 
         for key, item in data_list.items():
             game = torch.from_numpy(np.load(key))
-            label = torch.zeros((game.size()[0],4))
-            label[:, item-1] = 1
+            label = torch.full((game.size()[0],), int(item-1))
             labels.append(label)
             data.append(game)
         return torch.concat(data), torch.concat(labels)
@@ -34,7 +32,7 @@ class Games(Dataset):
         label = self.labels[index]
 
         return {'x': data.float(),
-                'y': label.float()}
+                'y': label}
 
 
     def __len__(self):
