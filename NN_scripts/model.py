@@ -30,17 +30,12 @@ class DCNN(nn.Module):
 
     def __init__(self, in_channels, out_classes):
         super().__init__()
-        #self.conv1 = ConvBlock(in_channels, in_channels, kernel_size=3)
-        #self.conv2 = ConvBlock(in_channels, in_channels, kernel_size=3)
-        self.fc1 = DenseBlock(in_channels, 64, dropout_chance=0.25)
-        self.fc2 = DenseBlock(64, 32, dropout_chance=0.0)
+        self.fc = DenseBlock(in_channels, 64, dropout_chance=0.25)
+        self.fc2 = DenseBlock(64, 32, dropout_chance=0.25)
         self.last = nn.Linear(32, out_classes, bias=True)
 
     def forward(self, x):
-        #out = self.conv1(x)
-        #out = self.conv2(out)
-        #out = out.view(out.size(0), -1)
-        out = self.fc1(x)
+        out = self.fc(x)
         out = self.fc2(out)
         out = self.last(out)
         return out
@@ -49,7 +44,6 @@ class DCNN(nn.Module):
 
 
 if __name__ == "__main__":
-    if __name__ == "__main__":
         model = DCNN(633, 4)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = nn.DataParallel(model, device_ids = [i for i in range(torch.cuda.device_count())])
@@ -59,3 +53,4 @@ if __name__ == "__main__":
         print(pytorch_total_params)
         x = torch.rand((1,1,633))
         out = model(x)
+        print(model.state_dict)
